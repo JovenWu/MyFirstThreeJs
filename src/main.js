@@ -21,7 +21,7 @@ camera.position.x = 7;
 camera.position.y = 7;
 camera.position.z = 7;
 
-// Object
+// Walls and Floor
 const wallGeometry = new THREE.BoxGeometry(10, 10, 1);
 const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xfffaec });
 const wall = new THREE.Mesh(wallGeometry, wallMaterial);
@@ -41,7 +41,16 @@ const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x3d3d3d });
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 scene.add(floor);
 
-//Card
+// Cards array and creation
+const cards = [];
+const cardPositions = [
+  { x: 2, y: 0.5, z: 0 },
+  { x: 0, y: 0.5, z: 2 },
+  { x: -2, y: 0.5, z: 0 },
+  { x: 0, y: 0.5, z: -2 },
+  { x: 1, y: 0.5, z: 1 }
+];
+
 const cardGeometry = new THREE.BoxGeometry(0.5, 0.05, 0.7);
 const cardMaterial = new THREE.MeshPhysicalMaterial({
   color: 0xffffff,
@@ -51,11 +60,16 @@ const cardMaterial = new THREE.MeshPhysicalMaterial({
   clearcoat: 1,
   clearcoatRoughness: 0.2,
 });
-const card = new THREE.Mesh(cardGeometry, cardMaterial);
-card.position.y = 0.5;
-card.position.x = 2;
-card.name = "card";
-scene.add(card);
+
+cardPositions.forEach((pos, index) => {
+  const card = new THREE.Mesh(cardGeometry, cardMaterial.clone());
+  card.position.set(pos.x, pos.y, pos.z);
+  card.name = `card_${index}`;
+  card.userData.originalPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
+  card.userData.originalRotation = new THREE.Euler().copy(card.rotation);
+  cards.push(card);
+  scene.add(card);
+});
 
 // Light
 const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -66,92 +80,93 @@ scene.add(directionalLight);
 directionalLight2.position.set(5, 5, 5);
 scene.add(directionalLight2);
 
-// Render
+// Renderer
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Orbit Controls
 const control = new OrbitControls(camera, renderer.domElement);
-control.enebaleDamping = true;
+control.enableDamping = true;
 control.dampingFactor = 0.2;
 control.enableZoom = true;
 control.enablePan = false;
 
-// Animation variables
-const originalCardPosition = new THREE.Vector3();
-const originalCardRotation = new THREE.Euler();
-const targetPosition = new THREE.Vector3();
-let isAnimating = false;
+// Animation state
 let selectedCard = null;
+let isAnimating = false;
+const targetPosition = new THREE.Vector3();
 
-//Animation Function
+// Animation Function
 function animateCard() {
   if (!selectedCard) return;
 
   if (isAnimating) {
-      const direction = new THREE.Vector3();
-      camera.getWorldDirection(direction);
-      targetPosition.copy(camera.position).add(direction.multiplyScalar(0.7));
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    targetPosition.copy(camera.position).add(direction.multiplyScalar(0.8));
 
-      const quaternion = new THREE.Quaternion();
-      camera.getWorldQuaternion(quaternion);
-      const verticalRotation = new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(Math.PI / 2, 0, 0)
-      );
-      quaternion.multiply(verticalRotation);
-      selectedCard.quaternion.slerp(quaternion, 0.05);
+    const quaternion = new THREE.Quaternion();
+    camera.getWorldQuaternion(quaternion);
+    const verticalRotation = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(Math.PI / 2, 0, 0)
+    );
+    quaternion.multiply(verticalRotation);
+    selectedCard.quaternion.slerp(quaternion, 0.05);
   } else {
-      targetPosition.copy(originalCardPosition);
-      selectedCard.quaternion.slerp(new THREE.Quaternion().setFromEuler(originalCardRotation), 0.05);
+    targetPosition.copy(selectedCard.userData.originalPosition);
+    selectedCard.quaternion.slerp(
+      new THREE.Quaternion().setFromEuler(selectedCard.userData.originalRotation),
+      0.05
+    );
   }
 
   selectedCard.position.lerp(targetPosition, 0.05);
 
-  if (!isAnimating && selectedCard.position.distanceTo(originalCardPosition) < 0.01) {
-      selectedCard = null;
+  if (!isAnimating && selectedCard.position.distanceTo(selectedCard.userData.originalPosition) < 0.01) {
+    selectedCard = null;
   }
 }
-//Click able Object
-const clickableObjects = [card];
 
-//Event Listener for Click
-
+// Click Event Handler
 window.addEventListener("click", (event) => {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(clickableObjects);
+  const intersects = raycaster.intersectObjects(cards);
 
   if (intersects.length > 0) {
-      if (!selectedCard) {
-          selectedCard = intersects[0].object;
-          originalCardPosition.copy(selectedCard.position);
-          originalCardRotation.copy(selectedCard.rotation);
-      }
+    const clickedCard = intersects[0].object;
+    
+    if (selectedCard && selectedCard !== clickedCard) {
+      isAnimating = false;
+    }
+    
+    if (!selectedCard || selectedCard === clickedCard) {
+      selectedCard = clickedCard;
       isAnimating = !isAnimating;
+    }
   }
 });
 
-//Event listener for Resizing
+// Resize Event Handler
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-})
+});
 
-// Animate
+// Animation Loop
 function animate() {
   requestAnimationFrame(animate);
   animateCard();
-
   control.update();
   renderer.render(scene, camera);
 }
 
-animate();
-
-//! Debug Stuff
+// Debug Helper
 const gridHelper = new THREE.GridHelper(100, 100);
 scene.add(gridHelper);
+
+animate();
