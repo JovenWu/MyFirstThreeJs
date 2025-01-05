@@ -24,10 +24,10 @@ camera.position.z = 7;
 // Texture
 const textureLoader = new THREE.TextureLoader();
 const cardFrontTexture = textureLoader.load(
-  "../public/image/cardFrontTexture.jpg"
+  "./public/image/cardFrontTexture.jpg"
 );
 const cardBackTexture = textureLoader.load(
-  "../public/image/cardBackTexture.png"
+  "./public/image/cardBackTexture.png"
 );
 
 // Walls and Floor
