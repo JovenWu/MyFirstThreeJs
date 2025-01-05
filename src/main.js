@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import cardFTexture from "./images/cardFrontTexture.jpg";
+import cardBTexture from "./images/cardBackTexture.png";
 
 //Ray Cast
 const raycaster = new THREE.Raycaster();
@@ -24,10 +26,10 @@ camera.position.z = 7;
 // Texture
 const textureLoader = new THREE.TextureLoader();
 const cardFrontTexture = textureLoader.load(
-  "./public/image/cardFrontTexture.jpg"
+  cardFTexture
 );
 const cardBackTexture = textureLoader.load(
-  "./public/image/cardBackTexture.png"
+  cardBTexture
 );
 
 // Walls and Floor
