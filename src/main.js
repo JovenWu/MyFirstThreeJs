@@ -93,6 +93,7 @@ cardPositions.forEach((pos, index) => {
   card.name = `card_${index}`;
   card.userData.originalPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
   card.userData.originalRotation = new THREE.Euler().copy(card.rotation);
+  card.userData.hasBeenClicked = false;
   cards.push(card);
   scene.add(card);
 });
@@ -138,17 +139,22 @@ function animateCard() {
     camera.getWorldQuaternion(quaternion);
     const verticalRotation = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(Math.PI / 2, Math.PI, Math.PI)
-    );  
+    );
     quaternion.multiply(verticalRotation);
     selectedCard.quaternion.slerp(quaternion, 0.03);
+    selectedCard.userData.hasBeenClicked = true;
   } else {
     targetPosition.copy(selectedCard.userData.originalPosition);
-    selectedCard.quaternion.slerp(
-      new THREE.Quaternion().setFromEuler(
-        selectedCard.userData.originalRotation
-      ),
-      0.03
+    const targetRotation = new THREE.Quaternion().setFromEuler(
+      selectedCard.userData.hasBeenClicked
+        ? (selectedCard.userData.originalRotation = new THREE.Euler(
+            0,
+            0,
+            Math.PI
+          ))
+        : selectedCard.userData.originalRotation
     );
+    selectedCard.quaternion.slerp(targetRotation, 0.03);
   }
 
   selectedCard.position.lerp(targetPosition, 0.03);
