@@ -21,6 +21,11 @@ camera.position.x = 7;
 camera.position.y = 7;
 camera.position.z = 7;
 
+// Texture
+const textureLoader = new THREE.TextureLoader();
+const cardTexture = textureLoader.load("../public/image/cardFrontTexture.jpg");
+
+
 // Walls and Floor
 const wallGeometry = new THREE.BoxGeometry(10, 10, 1);
 const wallMaterial = new THREE.MeshLambertMaterial({ color: 0xfffaec });
@@ -48,10 +53,10 @@ const cardPositions = [
   { x: 0, y: 0.5, z: 2 },
   { x: -2, y: 0.5, z: 0 },
   { x: 0, y: 0.5, z: -2 },
-  { x: 1, y: 0.5, z: 1 }
+  { x: 1, y: 0.5, z: 1 },
 ];
 
-const cardGeometry = new THREE.BoxGeometry(0.5, 0.05, 0.7);
+const cardGeometry = new THREE.BoxGeometry(0.5, 0.02, 0.7);
 const cardMaterial = new THREE.MeshPhysicalMaterial({
   color: 0xffffff,
   metalness: 0.8,
@@ -59,6 +64,7 @@ const cardMaterial = new THREE.MeshPhysicalMaterial({
   reflectivity: 0.8,
   clearcoat: 1,
   clearcoatRoughness: 0.2,
+  map: cardTexture,
 });
 
 cardPositions.forEach((pos, index) => {
@@ -100,36 +106,45 @@ const targetPosition = new THREE.Vector3();
 // Animation Function
 function animateCard() {
   if (!selectedCard) return;
-
   if (isAnimating) {
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
-    targetPosition.copy(camera.position).add(direction.multiplyScalar(0.8));
+    const newTargetPosition = new THREE.Vector3().copy(camera.position).add(direction.multiplyScalar(0.8));
+    targetPosition.lerp(newTargetPosition, 0.1);
 
     const quaternion = new THREE.Quaternion();
     camera.getWorldQuaternion(quaternion);
     const verticalRotation = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(Math.PI / 2, 0, 0)
+      new THREE.Euler(Math.PI / 2, 0, Math.PI)
     );
     quaternion.multiply(verticalRotation);
-    selectedCard.quaternion.slerp(quaternion, 0.05);
+    selectedCard.quaternion.slerp(quaternion, 0.03);
   } else {
     targetPosition.copy(selectedCard.userData.originalPosition);
     selectedCard.quaternion.slerp(
-      new THREE.Quaternion().setFromEuler(selectedCard.userData.originalRotation),
-      0.05
+      new THREE.Quaternion().setFromEuler(
+        selectedCard.userData.originalRotation
+      ),
+      0.03
     );
   }
 
-  selectedCard.position.lerp(targetPosition, 0.05);
+  selectedCard.position.lerp(targetPosition, 0.03);
 
-  if (!isAnimating && selectedCard.position.distanceTo(selectedCard.userData.originalPosition) < 0.01) {
+  if (
+    !isAnimating &&
+    selectedCard.position.distanceTo(selectedCard.userData.originalPosition) <
+      0.01 &&
+    selectedCard.quaternion.angleTo(new THREE.Quaternion().setFromEuler(selectedCard.userData.originalRotation)) < 0.01
+  ) {
     selectedCard = null;
   }
 }
 
 // Click Event Handler
 window.addEventListener("click", (event) => {
+  if (cards.length === 0) return;
+
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
@@ -138,17 +153,17 @@ window.addEventListener("click", (event) => {
 
   if (intersects.length > 0) {
     const clickedCard = intersects[0].object;
-    
+
     if (selectedCard && selectedCard !== clickedCard) {
       isAnimating = false;
     }
-    
+
     if (!selectedCard || selectedCard === clickedCard) {
       selectedCard = clickedCard;
       isAnimating = !isAnimating;
     }
   }
-});
+}); 
 
 // Resize Event Handler
 window.addEventListener("resize", () => {
