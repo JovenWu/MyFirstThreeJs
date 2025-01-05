@@ -23,8 +23,12 @@ camera.position.z = 7;
 
 // Texture
 const textureLoader = new THREE.TextureLoader();
-const cardTexture = textureLoader.load("../public/image/cardFrontTexture.jpg");
-
+const cardFrontTexture = textureLoader.load(
+  "../public/image/cardFrontTexture.jpg"
+);
+const cardBackTexture = textureLoader.load(
+  "../public/image/cardBackTexture.png"
+);
 
 // Walls and Floor
 const wallGeometry = new THREE.BoxGeometry(10, 10, 1);
@@ -46,8 +50,31 @@ const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x3d3d3d });
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 scene.add(floor);
 
-// Cards array and creation
 const cards = [];
+const sideMaterial = new THREE.MeshPhysicalMaterial({
+  color: 0xffffff,
+  metalness: 0.8,
+  roughness: 0.4,
+  reflectivity: 0.8,
+  clearcoat: 1,
+  clearcoatRoughness: 0.2,
+});
+
+const frontMaterial = sideMaterial.clone();
+frontMaterial.map = cardFrontTexture;
+
+const backMaterial = sideMaterial.clone();
+backMaterial.map = cardBackTexture;
+
+const materials = [
+  sideMaterial,
+  sideMaterial,
+  backMaterial,
+  frontMaterial,
+  sideMaterial,
+  sideMaterial,
+];
+
 const cardPositions = [
   { x: 2, y: 0.5, z: 0 },
   { x: 0, y: 0.5, z: 2 },
@@ -57,18 +84,11 @@ const cardPositions = [
 ];
 
 const cardGeometry = new THREE.BoxGeometry(0.5, 0.02, 0.7);
-const cardMaterial = new THREE.MeshPhysicalMaterial({
-  color: 0xffffff,
-  metalness: 0.8,
-  roughness: 0.4,
-  reflectivity: 0.8,
-  clearcoat: 1,
-  clearcoatRoughness: 0.2,
-  map: cardTexture,
-});
 
 cardPositions.forEach((pos, index) => {
-  const card = new THREE.Mesh(cardGeometry, cardMaterial.clone());
+  const cardMaterials = materials.map((material) => material.clone());
+
+  const card = new THREE.Mesh(cardGeometry, cardMaterials);
   card.position.set(pos.x, pos.y, pos.z);
   card.name = `card_${index}`;
   card.userData.originalPosition = new THREE.Vector3(pos.x, pos.y, pos.z);
@@ -109,14 +129,16 @@ function animateCard() {
   if (isAnimating) {
     const direction = new THREE.Vector3();
     camera.getWorldDirection(direction);
-    const newTargetPosition = new THREE.Vector3().copy(camera.position).add(direction.multiplyScalar(0.8));
+    const newTargetPosition = new THREE.Vector3()
+      .copy(camera.position)
+      .add(direction.multiplyScalar(0.8));
     targetPosition.lerp(newTargetPosition, 0.1);
 
     const quaternion = new THREE.Quaternion();
     camera.getWorldQuaternion(quaternion);
     const verticalRotation = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler(Math.PI / 2, 0, Math.PI)
-    );
+      new THREE.Euler(Math.PI / 2, Math.PI, Math.PI)
+    );  
     quaternion.multiply(verticalRotation);
     selectedCard.quaternion.slerp(quaternion, 0.03);
   } else {
@@ -135,7 +157,11 @@ function animateCard() {
     !isAnimating &&
     selectedCard.position.distanceTo(selectedCard.userData.originalPosition) <
       0.01 &&
-    selectedCard.quaternion.angleTo(new THREE.Quaternion().setFromEuler(selectedCard.userData.originalRotation)) < 0.01
+    selectedCard.quaternion.angleTo(
+      new THREE.Quaternion().setFromEuler(
+        selectedCard.userData.originalRotation
+      )
+    ) < 0.01
   ) {
     selectedCard = null;
   }
@@ -163,7 +189,7 @@ window.addEventListener("click", (event) => {
       isAnimating = !isAnimating;
     }
   }
-}); 
+});
 
 // Resize Event Handler
 window.addEventListener("resize", () => {
